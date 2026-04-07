@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { PlusCircle, X, Check, AlertCircle } from 'lucide-react';
+import { PlusCircle, X, Check, AlertCircle, Calculator } from 'lucide-react';
+import { parseNumericInput, normalizeNumericInput, englishToBangla } from '../utils/numericUtils';
 
 interface ExpenseFormProps {
   onSuccess?: () => void;
@@ -31,7 +32,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSuccess, onCancel })
       return;
     }
     
-    if (!amount || parseFloat(amount) <= 0) {
+    const parsedAmount = parseNumericInput(amount);
+    if (!amount || parsedAmount <= 0 || isNaN(parsedAmount)) {
       setError('সঠিক খরচের পরিমাণ লিখুন');
       return;
     }
@@ -54,7 +56,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSuccess, onCancel })
       const expenseData = {
         title: title.trim(),
         description: description.trim(),
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         category: category.trim(),
         date: new Date(date).toISOString(),
         createdBy: user.uid,
@@ -91,14 +93,38 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSuccess, onCancel })
   
   const formatCurrency = (value: string) => {
     if (!value) return '';
-    const num = parseFloat(value.replace(/[^\d.]/g, ''));
-    if (isNaN(num)) return '';
-    return new Intl.NumberFormat('bn-BD').format(num);
+    const parsed = parseNumericInput(value);
+    if (isNaN(parsed)) return '';
+    return new Intl.NumberFormat('bn-BD').format(parsed);
   };
   
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^\d.]/g, '');
-    setAmount(value);
+    const normalized = normalizeNumericInput(e.target.value);
+    setAmount(normalized);
+  };
+  
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calculatorValue, setCalculatorValue] = useState('');
+  
+  const handleCalculatorInput = (input: string) => {
+    if (input === 'C') {
+      setCalculatorValue('');
+    } else if (input === '←') {
+      setCalculatorValue(prev => prev.slice(0, -1));
+    } else if (input === '=') {
+      try {
+        const result = eval(calculatorValue.replace(/[^\d\+\-\*\/\.]/g, ''));
+        if (!isNaN(result)) {
+          setAmount(result.toString());
+          setCalculatorValue('');
+          setShowCalculator(false);
+        }
+      } catch (err) {
+        setCalculatorValue('Error');
+      }
+    } else {
+      setCalculatorValue(prev => prev + input);
+    }
   };
   
   return (
@@ -177,12 +203,20 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSuccess, onCancel })
                 value={formatCurrency(amount)}
                 onChange={handleAmountChange}
                 placeholder="0"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all pl-12"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all pl-12 pr-12"
                 required
               />
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">
                 ৳
               </div>
+              <button
+                type="button"
+                onClick={() => setShowCalculator(!showCalculator)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors"
+                title="ক্যালকুলেটর"
+              >
+                <Calculator size={20} />
+              </button>
             </div>
           </div>
           
@@ -261,6 +295,56 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSuccess, onCancel })
         </div>
       </form>
       
+      {/* Calculator Popup */}
+      {showCalculator && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="p-6 border-b border-slate-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900">ক্যালকুলেটর</h3>
+                <button
+                  onClick={() => setShowCalculator(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="bg-slate-50 border border-slate-300 rounded-xl p-4 text-right font-mono text-xl">
+                  {calculatorValue || '0'}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-4 gap-3">
+                {['7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', '0', '.', '=', '+', 'C', '←'].map((btn) => (
+                  <button
+                    key={btn}
+                    type="button"
+                    onClick={() => handleCalculatorInput(btn)}
+                    className={`p-4 rounded-xl font-bold text-lg transition-all ${
+                      btn === '=' 
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                        : btn === 'C' || btn === '←'
+                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                        : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                    }`}
+                  >
+                    {btn}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="mt-6 text-center text-sm text-slate-600">
+                <p>ক্যালকুলেটর ব্যবহার করে পরিমাণ গণনা করুন এবং "=" চাপলে অটোমেটিকভাবে পরিমাণ সেট হবে</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Help Text */}
       <div className="bg-slate-50 border-t border-slate-200 p-6">
         <h4 className="font-medium text-slate-800 mb-2">নির্দেশনা:</h4>
@@ -269,6 +353,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onSuccess, onCancel })
           <li>খরচের কারণ/ক্যাটাগরি স্পষ্টভাবে লিখুন যাতে সবাই বুঝতে পারে টাকা কোথায় খরচ হয়েছে</li>
           <li>খরচের তারিখ সঠিকভাবে নির্বাচন করুন</li>
           <li>বিস্তারিত বিবরণে প্রাসঙ্গিক তথ্য যোগ করুন</li>
+          <li>পরিমাণ ফিল্ডে ক্যালকুলেটর আইকনে ক্লিক করে সহজে গণনা করুন</li>
+          <li>বাংলা (০-৯) বা ইংরেজি (0-9) উভয় সংখ্যাই ব্যবহার করতে পারেন</li>
         </ul>
       </div>
     </div>

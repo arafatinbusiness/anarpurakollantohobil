@@ -9,7 +9,7 @@ import { Dashboard } from './components/Dashboard';
 import { AdminPanel } from './components/AdminPanel';
 import { LandingPage } from './components/LandingPage';
 import { ExpenseDashboard } from './components/ExpenseDashboard';
-import { User, Funding, Log, FundInfo } from './types';
+import { User, Funding, Log, FundInfo, Expense } from './types';
 import { Loader2, ShieldCheck } from 'lucide-react';
 
 // Main App component with routing
@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [fundings, setFundings] = useState<Funding[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
   const [fundInfo, setFundInfo] = useState<FundInfo | null>(null);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   
   const location = useLocation();
@@ -102,6 +103,11 @@ const App: React.FC = () => {
       }
     });
 
+    // Listen to Expenses (public data)
+    const unsubExpenses = onSnapshot(query(collection(db, 'expenses'), orderBy('date', 'desc')), (snapshot) => {
+      setExpenses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense)));
+    });
+
     setLoading(false);
 
     return () => {
@@ -109,6 +115,7 @@ const App: React.FC = () => {
       unsubFundings();
       unsubLogs();
       unsubInfo();
+      unsubExpenses();
     };
   }, [isAuthReady]);
 
@@ -158,10 +165,9 @@ const App: React.FC = () => {
         >
           <Dashboard 
             fundings={fundings} 
-            logs={logs} 
             users={users} 
             fundName={fundInfo?.name || ''} 
-            isAdmin={isAdmin}
+            expenses={expenses}
           />
         </Layout>
       } />

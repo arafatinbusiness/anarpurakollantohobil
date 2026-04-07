@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { UserPlus, DollarSign, Settings, Save, X, Plus, Trash2, Users, ChevronRight, Info, History, Clock, Receipt } from 'lucide-react';
+import { UserPlus, DollarSign, Settings, Save, X, Plus, Trash2, Users, ChevronRight, Info, History, Clock, Receipt, Calculator } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc, updateDoc, doc, deleteDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { User, Funding, FundInfo, Log } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { ExpenseForm } from './ExpenseForm';
+import { parseNumericInput, normalizeNumericInput } from '../utils/numericUtils';
 
 interface AdminPanelProps {
   users: User[];
@@ -16,6 +17,14 @@ interface AdminPanelProps {
 const MONTHS_BN = [
   'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
   'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+];
+
+const NEIGHBORHOODS = [
+  'সরকার পাড়া',
+  'পূর্ব পাড়া',
+  'মাঠ পাড়া', 
+  'উত্তর পাড়া',
+  'দক্ষিণ পাড়া'
 ];
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInfo, currentAdmin }) => {
@@ -32,6 +41,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
   const [newUserName, setNewUserName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<'admin' | 'member'>('member');
+  const [newUserNeighborhood, setNewUserNeighborhood] = useState('');
   const [userDetails, setUserDetails] = useState('');
   
   // Edit User State
@@ -39,6 +49,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
   const [editUserName, setEditUserName] = useState('');
   const [editUserPhone, setEditUserPhone] = useState('');
   const [editUserRole, setEditUserRole] = useState<'admin' | 'member'>('member');
+  const [editUserNeighborhood, setEditUserNeighborhood] = useState('');
 
   // Fund Info State
   const [fundName, setFundName] = useState(fundInfo?.name || '');
@@ -61,6 +72,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
     setLoading(true);
     try {
       const user = users.find(u => u.id === selectedUserId);
+      const parsedAmount = parseNumericInput(amount);
+      
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        alert('সঠিক পরিমাণ লিখুন!');
+        setLoading(false);
+        return;
+      }
+      
       const q = query(
         collection(db, 'fundings'),
         where('userId', '==', selectedUserId),
@@ -72,22 +91,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
       if (!querySnapshot.empty) {
         const existingDoc = querySnapshot.docs[0];
         await updateDoc(doc(db, 'fundings', existingDoc.id), {
-          amount: parseFloat(amount),
+          amount: parsedAmount,
           updatedAt: new Date().toISOString(),
           updatedBy: currentAdmin.displayName || 'অ্যাডমিন'
         });
-        await logAction('funding_update', `${user?.name}-এর ${month} ${year}-এর তহবিল আপডেট করা হয়েছে: ${amount} টাকা`);
+        await logAction('funding_update', `${user?.name}-এর ${month} ${year}-এর তহবিল আপডেট করা হয়েছে: ${parsedAmount} টাকা`);
       } else {
         await addDoc(collection(db, 'fundings'), {
           userId: selectedUserId,
           userName: user?.name || 'অজানা',
-          amount: parseFloat(amount),
+          amount: parsedAmount,
           month,
           year: parseInt(year),
           updatedAt: new Date().toISOString(),
           updatedBy: currentAdmin.displayName || 'অ্যাডমিন'
         });
-        await logAction('funding_update', `${user?.name}-এর ${month} ${year}-এর নতুন তহবিল যোগ করা হয়েছে: ${amount} টাকা`);
+        await logAction('funding_update', `${user?.name}-এর ${month} ${year}-এর নতুন তহবিল যোগ করা হয়েছে: ${parsedAmount} টাকা`);
       }
       setAmount('');
       alert('তহবিল সফলভাবে আপডেট হয়েছে!');
@@ -110,12 +129,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
         name: newUserName,
         phone: newUserPhone,
         role: newUserRole,
+        neighborhood: newUserNeighborhood || null,
         details: userDetails,
         uid: '' // Will need to be updated when user logs in
       });
-      await logAction('user_add', `নতুন সদস্য যোগ করা হয়েছে: ${newUserName} (${newUserRole})`);
+      await logAction('user_add', `নতুন সদস্য যোগ করা হয়েছে: ${newUserName} (${newUserRole}) - পাড়া: ${newUserNeighborhood || 'নির্বাচিত নয়'}`);
       setNewUserName('');
       setNewUserPhone('');
+      setNewUserNeighborhood('');
       setUserDetails('');
       alert('সদস্য সফলভাবে যোগ করা হয়েছে! ব্যবহারকারী প্রথমবার লগইন করার পর UID আপডেট করতে হবে।');
     } catch (err) {
@@ -250,6 +271,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
     setEditUserName(user.name);
     setEditUserPhone(user.phone || '');
     setEditUserRole(user.role || 'member');
+    setEditUserNeighborhood(user.neighborhood || '');
   };
 
   // Function to cancel editing
@@ -258,6 +280,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
     setEditUserName('');
     setEditUserPhone('');
     setEditUserRole('member');
+    setEditUserNeighborhood('');
   };
 
   // Function to update user information
@@ -270,9 +293,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
       await updateDoc(doc(db, 'users', editingUser.id), {
         name: editUserName,
         phone: editUserPhone,
-        role: editUserRole
+        role: editUserRole,
+        neighborhood: editUserNeighborhood || null
       });
-      await logAction('user_update', `${editingUser.name}-এর তথ্য আপডেট করা হয়েছে: নতুন নাম ${editUserName}, নতুন ফোন ${editUserPhone}, নতুন রোল ${editUserRole}`);
+      await logAction('user_update', `${editingUser.name}-এর তথ্য আপডেট করা হয়েছে: নতুন নাম ${editUserName}, নতুন ফোন ${editUserPhone}, নতুন রোল ${editUserRole}, নতুন পাড়া ${editUserNeighborhood || 'নির্বাচিত নয়'}`);
       alert('সদস্যের তথ্য সফলভাবে আপডেট হয়েছে!');
       cancelEditUser();
     } catch (err) {
@@ -409,14 +433,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">৳</span>
                     <input
-                      type="number"
-                      placeholder="৫০০"
-                      className="w-full pl-8 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-sm"
+                      type="text"
+                      placeholder="৫০০ বা 500"
+                      className="w-full pl-8 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-sm"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={(e) => {
+                        const normalized = normalizeNumericInput(e.target.value);
+                        setAmount(normalized);
+                      }}
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Simple calculator prompt for AdminPanel
+                        const input = prompt('পরিমাণ লিখুন (বাংলা বা ইংরেজি সংখ্যা):', amount);
+                        if (input !== null) {
+                          const normalized = normalizeNumericInput(input);
+                          setAmount(normalized);
+                        }
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors"
+                      title="ক্যালকুলেটর"
+                    >
+                      <Calculator size={18} />
+                    </button>
                   </div>
+                  <p className="text-[10px] text-slate-400 mt-1">বাংলা (০-৯) বা ইংরেজি (0-9) সংখ্যা ব্যবহার করুন</p>
                 </div>
 
                 <button
@@ -563,6 +606,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                     </select>
                   </div>
 
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">পাড়া (নির্বাচন করুন)</label>
+                    <select
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                      value={editUserNeighborhood}
+                      onChange={(e) => setEditUserNeighborhood(e.target.value)}
+                    >
+                      <option value="">পাড়া নির্বাচন করুন</option>
+                      {NEIGHBORHOODS.map(neighborhood => (
+                        <option key={neighborhood} value={neighborhood}>{neighborhood}</option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">একই নামের সদস্যদের আলাদা করতে পাড়া নির্বাচন করুন</p>
+                  </div>
+
                   <div className="flex gap-3">
                     <button
                       type="button"
@@ -629,6 +687,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                   </select>
                 </div>
 
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">পাড়া (নির্বাচন করুন)</label>
+                  <select
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                    value={newUserNeighborhood}
+                    onChange={(e) => setNewUserNeighborhood(e.target.value)}
+                  >
+                    <option value="">পাড়া নির্বাচন করুন</option>
+                    {NEIGHBORHOODS.map(neighborhood => (
+                      <option key={neighborhood} value={neighborhood}>{neighborhood}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">একই নামের সদস্যদের আলাদা করতে পাড়া নির্বাচন করুন</p>
+                </div>
+
                 <button
                   type="submit"
                   disabled={loading}
@@ -655,6 +728,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                         <div>
                           <p className="font-black text-slate-900 leading-tight">{u.name}</p>
                           <p className="text-[10px] text-slate-400 font-bold">{u.phone || u.email}</p>
+                          {u.neighborhood && (
+                            <p className="text-[9px] text-emerald-600 font-bold mt-1 bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
+                              {u.neighborhood}
+                            </p>
+                          )}
                           {u.uid && (
                             <p className="text-[8px] text-slate-300 font-mono mt-1">UID: {u.uid.substring(0, 8)}...</p>
                           )}

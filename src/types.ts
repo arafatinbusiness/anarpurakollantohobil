@@ -8,6 +8,7 @@ export interface User {
   phone?: string;
   role: UserRole;
   details?: string;
+  neighborhood?: string; // সরকার পাড়া, পূর্ব পাড়া, মাঠ পাড়া, উত্তর পাড়া, দক্ষিণ পাড়া
 }
 
 export interface Funding {

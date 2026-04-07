@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Download, Search, Calendar, User as UserIcon, ChevronRight, X, History, Clock, ChevronLeft, ChevronRight as ChevronRightIcon, Phone, MessageCircle, ArrowLeft } from 'lucide-react';
-import { Funding, User, Log } from '../types';
+import { Funding, User, Log, Expense } from '../types';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -13,6 +13,7 @@ interface DashboardProps {
   fundings: Funding[];
   users: User[];
   fundName: string;
+  expenses?: Expense[]; // Optional expenses data for balance calculation
 }
 
 const MONTHS_BN = [
@@ -20,7 +21,7 @@ const MONTHS_BN = [
   'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
 ];
 
-export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName, expenses = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
@@ -123,8 +124,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName 
     });
   }, [fundings, selectedMonth, selectedYear]);
 
-  // Calculate total amount
-  const totalAmount = useMemo(() => fundings.reduce((sum, f) => sum + f.amount, 0), [fundings]);
+  // Calculate total contributions and expenses
+  const totalContributions = useMemo(() => fundings.reduce((sum, f) => sum + f.amount, 0), [fundings]);
+  const totalExpenses = useMemo(() => expenses.reduce((sum, e) => sum + e.amount, 0), [expenses]);
+  const balance = totalContributions - totalExpenses;
 
   // Create member data for main table
   const memberData = useMemo(() => {
@@ -229,19 +232,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName 
     // Get selected year or use current year
     const targetYear = selectedYear || new Date().getFullYear().toString();
     
-    // Create headers: Member name + all months
+    // Create headers: Member name + neighborhood + all months
     const headers = [
-      ['তহবিল সংগ্রহ রিপোর্ট', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      [`তহবিলের নাম: ${fundName || 'তহবিল ড্যাশবোর্ড'}`, '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      [`রিপোর্ট বছর: ${targetYear}`, '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      [`রিপোর্ট তারিখ: ${format(new Date(), 'dd MMMM yyyy', { locale: bn })}`, '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-      ['সদস্যের নাম', ...MONTHS_BN, 'মোট', 'স্ট্যাটাস']
+      ['তহবিল সংগ্রহ রিপোর্ট', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      [`তহবিলের নাম: ${fundName || 'তহবিল ড্যাশবোর্ড'}`, '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      [`রিপোর্ট বছর: ${targetYear}`, '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      [`রিপোর্ট তারিখ: ${format(new Date(), 'dd MMMM yyyy', { locale: bn })}`, '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      ['সদস্যের নাম', 'পাড়া', ...MONTHS_BN, 'মোট', 'স্ট্যাটাস']
     ];
 
     // Create data rows: each member with contributions for each month
     const data = users.map(user => {
-      const row = [user.name];
+      const row = [user.name, user.neighborhood || 'নির্বাচিত নয়'];
       let total = 0;
       let hasContributed = false;
       
@@ -291,6 +294,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName 
     // Define column widths
     const colWidths = [
       { wch: 25 }, // সদস্যের নাম
+      { wch: 15 }, // পাড়া
       ...MONTHS_BN.map(() => ({ wch: 12 })), // Month columns
       { wch: 15 }, // মোট
       { wch: 15 }  // স্ট্যাটাস
@@ -434,29 +438,78 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName 
 
   return (
     <div className="min-h-screen bg-slate-50 p-4">
-      {/* Header */}
+      {/* Header with Financial Summary Cards */}
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-slate-900 mb-2">{fundName || 'তহবিল ড্যাশবোর্ড'}</h1>
-        <div className="flex items-center justify-between">
-          <p className="text-slate-600 text-sm">
-            মোট সংগ্রহ: <span className="font-bold text-emerald-600">{totalAmount.toLocaleString('bn-BD')} ৳</span>
-          </p>
-        <div className="flex items-center gap-2">
-          <Link
-            to="/expenses"
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors"
-          >
-            <Download size={16} />
-            খরচ ড্যাশবোর্ড
-          </Link>
-          <button
-            onClick={exportToExcel}
-            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
-          >
-            <Download size={16} />
-            ডাউনলোড
-          </button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Fund Name */}
+          <div className="lg:col-span-2">
+            <h1 className="text-2xl font-black text-slate-900 mb-2">{fundName || 'তহবিল ড্যাশবোর্ড'}</h1>
+            <p className="text-slate-600 text-sm">
+              সকল সদস্যের মোট সংগ্রহের সারাংশ
+            </p>
+          </div>
+          
+          {/* Financial Summary Cards */}
+          <div className="space-y-4">
+            {/* Total Contributions Card */}
+            <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl p-5 shadow-lg shadow-emerald-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-emerald-100 text-sm font-bold uppercase mb-1">মোট সংগ্রহ</p>
+                  <h2 className="text-3xl font-black text-white">
+                    {totalContributions.toLocaleString('bn-BD')} ৳
+                  </h2>
+                  <p className="text-emerald-100 text-xs mt-2">
+                    সকল সদস্য ও সকল মাসের মোট সংগ্রহ
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Download size={24} className="text-white" />
+                </div>
+              </div>
+            </div>
+            
+            {/* Balance Card */}
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-5 shadow-lg shadow-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm font-bold uppercase mb-1">বর্তমান ব্যালেন্স</p>
+                  <h2 className="text-3xl font-black text-white">
+                    {balance.toLocaleString('bn-BD')} ৳
+                  </h2>
+                  <p className="text-blue-100 text-xs mt-2">
+                    মোট সংগ্রহ ({totalContributions.toLocaleString('bn-BD')} ৳) - মোট খরচ ({totalExpenses.toLocaleString('bn-BD')} ৳)
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Download size={24} className="text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+        
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center gap-2">
+            <Link
+              to="/expenses"
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors"
+            >
+              <Download size={16} />
+              খরচ ড্যাশবোর্ড
+            </Link>
+            <button
+              onClick={exportToExcel}
+              className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
+            >
+              <Download size={16} />
+              রিপোর্ট ডাউনলোড
+            </button>
+          </div>
+          <div className="text-sm text-slate-500">
+            সদস্য: {users.length} জন | মাস: {new Set(fundings.map(f => f.month)).size} মাস | খরচ: {expenses.length} টি
+          </div>
         </div>
       </div>
 
