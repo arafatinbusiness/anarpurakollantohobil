@@ -130,7 +130,17 @@ export const ExpenseDashboard: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString || dateString.trim() === '') {
+      return 'তারিখ নেই';
+    }
+    
     const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'অবৈধ তারিখ';
+    }
+    
     return date.toLocaleDateString('bn-BD', {
       day: 'numeric',
       month: 'long',
@@ -314,7 +324,7 @@ export const ExpenseDashboard: React.FC = () => {
                       <div className="flex items-center gap-4 text-sm text-slate-500">
                         <span>যোগ করেছেন: {expense.createdByName}</span>
                         <span>•</span>
-                        <span>আপডেট: {formatDate(expense.updatedAt)}</span>
+                        <span>আপডেট: {formatDate(expense.updatedAt || expense.createdAt)}</span>
                       </div>
                     </div>
                     <div className="text-right">
