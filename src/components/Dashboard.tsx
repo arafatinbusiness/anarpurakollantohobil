@@ -115,6 +115,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
     }
   };
 
+  // Helper function to get month from funding (handles both old month/year and new date field)
+  const getFundingMonth = useCallback((funding: Funding): string => {
+    // If funding has month field (old data), use it
+    if (funding.month) {
+      return funding.month;
+    }
+    // If funding has date field (new data), extract month from date
+    if (funding.date) {
+      const dateObj = new Date(funding.date);
+      const monthIndex = dateObj.getMonth();
+      return MONTHS_BN[monthIndex];
+    }
+    // Fallback to current month
+    return MONTHS_BN[new Date().getMonth()];
+  }, []);
+
+  // Helper function to get year from funding (handles both old month/year and new date field)
+  const getFundingYear = useCallback((funding: Funding): number => {
+    // If funding has year field (old data), use it
+    if (funding.year) {
+      return funding.year;
+    }
+    // If funding has date field (new data), extract year from date
+    if (funding.date) {
+      const dateObj = new Date(funding.date);
+      return dateObj.getFullYear();
+    }
+    // Fallback to current year
+    return new Date().getFullYear();
+  }, []);
+
   // Filter fundings based on selected month/year
   const filteredFundings = useMemo(() => {
     return fundings.filter(f => {
@@ -122,7 +153,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
       const matchesYear = selectedYear ? getFundingYear(f).toString() === selectedYear : true;
       return matchesMonth && matchesYear;
     });
-  }, [fundings, selectedMonth, selectedYear]);
+  }, [fundings, selectedMonth, selectedYear, getFundingMonth, getFundingYear]);
 
   // Calculate total contributions and expenses
   const totalContributions = useMemo(() => fundings.reduce((sum, f) => sum + f.amount, 0), [fundings]);
@@ -196,7 +227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
       if (!b.hasContributed) return 1;
       return a.contribution - b.contribution;
     });
-  }, [users, fundings, selectedMonth, selectedYear]);
+  }, [users, fundings, selectedMonth, selectedYear, getFundingMonth, getFundingYear]);
 
   // Filter member data based on search term
   const filteredMemberData = useMemo(() => {
@@ -204,37 +235,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
       item.user.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [memberData, searchTerm]);
-
-  // Helper function to get month from funding (handles both old month/year and new date field)
-  const getFundingMonth = useCallback((funding: Funding): string => {
-    // If funding has month field (old data), use it
-    if (funding.month) {
-      return funding.month;
-    }
-    // If funding has date field (new data), extract month from date
-    if (funding.date) {
-      const dateObj = new Date(funding.date);
-      const monthIndex = dateObj.getMonth();
-      return MONTHS_BN[monthIndex];
-    }
-    // Fallback to current month
-    return MONTHS_BN[new Date().getMonth()];
-  }, []);
-
-  // Helper function to get year from funding (handles both old month/year and new date field)
-  const getFundingYear = useCallback((funding: Funding): number => {
-    // If funding has year field (old data), use it
-    if (funding.year) {
-      return funding.year;
-    }
-    // If funding has date field (new data), extract year from date
-    if (funding.date) {
-      const dateObj = new Date(funding.date);
-      return dateObj.getFullYear();
-    }
-    // Fallback to current year
-    return new Date().getFullYear();
-  }, []);
 
   // Get selected member's monthly contributions
   const memberMonthlyContributions = useMemo(() => {
@@ -256,7 +256,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
     });
     
     return monthlyData;
-  }, [selectedMember, fundings]);
+  }, [selectedMember, fundings, getFundingMonth, getFundingYear]);
 
   // Export to Excel with professional styling (member rows with month columns)
   const exportToExcel = () => {
