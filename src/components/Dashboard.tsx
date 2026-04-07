@@ -28,11 +28,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [viewMode, setViewMode] = useState<'main' | 'member' | 'history'>('main');
 
+  // Helper function to get month from funding (handles both old month/year and new date field)
+  const getFundingMonth = useCallback((funding: Funding): string => {
+    // If funding has month field (old data), use it
+    if (funding.month) {
+      return funding.month;
+    }
+    // If funding has date field (new data), extract month from date
+    if (funding.date) {
+      const dateObj = new Date(funding.date);
+      const monthIndex = dateObj.getMonth();
+      return MONTHS_BN[monthIndex];
+    }
+    // Fallback to current month
+    return MONTHS_BN[new Date().getMonth()];
+  }, []);
+
+  // Helper function to get year from funding (handles both old month/year and new date field)
+  const getFundingYear = useCallback((funding: Funding): number => {
+    // If funding has year field (old data), use it
+    if (funding.year) {
+      return funding.year;
+    }
+    // If funding has date field (new data), extract year from date
+    if (funding.date) {
+      const dateObj = new Date(funding.date);
+      return dateObj.getFullYear();
+    }
+    // Fallback to current year
+    return new Date().getFullYear();
+  }, []);
+
   // Get available years
   const years = useMemo(() => {
-    const yrs = new Set(fundings.map(f => f.year.toString()));
+    const yrs = new Set(fundings.map(f => getFundingYear(f).toString()));
     return Array.from(yrs).sort((a: string, b: string) => b.localeCompare(a));
-  }, [fundings]);
+  }, [fundings, getFundingYear]);
 
   // State for logs and pagination
   const [logs, setLogs] = useState<Log[]>([]);
@@ -114,37 +145,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
       fetchLogs(true);
     }
   };
-
-  // Helper function to get month from funding (handles both old month/year and new date field)
-  const getFundingMonth = useCallback((funding: Funding): string => {
-    // If funding has month field (old data), use it
-    if (funding.month) {
-      return funding.month;
-    }
-    // If funding has date field (new data), extract month from date
-    if (funding.date) {
-      const dateObj = new Date(funding.date);
-      const monthIndex = dateObj.getMonth();
-      return MONTHS_BN[monthIndex];
-    }
-    // Fallback to current month
-    return MONTHS_BN[new Date().getMonth()];
-  }, []);
-
-  // Helper function to get year from funding (handles both old month/year and new date field)
-  const getFundingYear = useCallback((funding: Funding): number => {
-    // If funding has year field (old data), use it
-    if (funding.year) {
-      return funding.year;
-    }
-    // If funding has date field (new data), extract year from date
-    if (funding.date) {
-      const dateObj = new Date(funding.date);
-      return dateObj.getFullYear();
-    }
-    // Fallback to current year
-    return new Date().getFullYear();
-  }, []);
 
   // Filter fundings based on selected month/year
   const filteredFundings = useMemo(() => {
