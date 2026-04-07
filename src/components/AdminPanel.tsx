@@ -1118,12 +1118,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
               )}
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 mb-8">
               <div className="flex items-center justify-between px-1">
                 <h3 className="text-sm font-black text-slate-800">বর্তমান সদস্য তালিকা</h3>
                 <span className="text-[10px] font-bold text-slate-400 uppercase">{users.length.toLocaleString('bn-BD')} জন</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 pb-4">
                 {users.map(u => (
                   <div key={u.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-2">

@@ -80,7 +80,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               onClick={onLogin}
               className="group relative px-10 py-5 bg-white text-black font-black text-lg rounded-full overflow-hidden transition-all hover:pr-14 active:scale-95"
             >
-              <span className="relative z-10">তহবিলে প্রবেশ করুন</span>
+              <span className="relative z-10">তহবিল দেখুন</span>
               <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all" size={24} />
             </button>
             
@@ -178,20 +178,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             {[
               { 
                 step: "০১", 
-                title: "লগইন করুন", 
-                desc: "গুগল অ্যাকাউন্ট দিয়ে দ্রুত সাইন-ইন করুন।",
+                title: "অ্যাডমিনের সাথে যোগাযোগ করুন", 
+                desc: "তহবিলে যোগ দিতে অ্যাডমিনের সাথে যোগাযোগ করুন।",
                 img: "/images/anarpura-kalyan-tohobil-bg.jpg"
               },
               { 
                 step: "০২", 
-                title: "টাকা জমা", 
-                desc: "অ্যাডমিনের কাছে আপনার কিস্তি জমা দিন।",
+                title: "টাকা জমা দিন", 
+                desc: "অ্যাডমিনের কাছে আপনার মাসিক কিস্তি জমা দিন।",
                 img: "/images/welfare-activity-1.jpg"
               },
               { 
                 step: "০৩", 
                 title: "হিসাব দেখুন", 
-                desc: "ড্যাশবোর্ডে আপনার জমার আপডেট দেখুন।",
+                desc: "ড্যাশবোর্ডে আপনার জমার আপডেট ও তহবিলের অবস্থা দেখুন।",
                 img: "/images/welfare-activity-2.jpg"
               }
             ].map((item, idx) => (
@@ -231,7 +231,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             onClick={onLogin}
             className="px-12 py-6 bg-emerald-500 text-black font-black text-xl rounded-full hover:scale-105 transition-transform shadow-2xl shadow-emerald-500/20"
           >
-            এখনই যোগ দিন
+            ড্যাশবোর্ড দেখুন
           </button>
         </div>
       </section>
