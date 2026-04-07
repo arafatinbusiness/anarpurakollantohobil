@@ -16,8 +16,9 @@ export interface Funding {
   userId: string;
   userName: string;
   amount: number;
-  month: string;
-  year: number;
+  date: string; // Specific date (YYYY-MM-DD format)
+  month?: string; // Optional for backward compatibility
+  year?: number; // Optional for backward compatibility
   updatedAt: string;
   updatedBy: string;
 }

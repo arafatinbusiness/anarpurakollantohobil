@@ -34,6 +34,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
   // Funding State
   const [selectedUserId, setSelectedUserId] = useState('');
   const [amount, setAmount] = useState('');
+  const [fundingDate, setFundingDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  });
   const [month, setMonth] = useState(MONTHS_BN[new Date().getMonth()]);
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [loading, setLoading] = useState(false);
@@ -90,7 +94,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
 
   const handleUpdateFunding = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUserId || !amount || !month || !year) return;
+    if (!selectedUserId || !amount || !fundingDate) return;
 
     setLoading(true);
     try {
@@ -103,11 +107,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
         return;
       }
       
+      // Format date for display
+      const dateObj = new Date(fundingDate);
+      const formattedDate = dateObj.toLocaleDateString('bn-BD', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      
       const q = query(
         collection(db, 'fundings'),
         where('userId', '==', selectedUserId),
-        where('month', '==', month),
-        where('year', '==', parseInt(year))
+        where('date', '==', fundingDate)
       );
       const querySnapshot = await getDocs(q);
 
@@ -118,18 +129,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
           updatedAt: new Date().toISOString(),
           updatedBy: currentAdmin.displayName || 'অ্যাডমিন'
         });
-        await logAction('funding_update', `${user?.name}-এর ${month} ${year}-এর তহবিল আপডেট করা হয়েছে: ${parsedAmount} টাকা`);
+        await logAction('funding_update', `${user?.name}-এর ${formattedDate}-এর তহবিল আপডেট করা হয়েছে: ${parsedAmount} টাকা`);
       } else {
         await addDoc(collection(db, 'fundings'), {
           userId: selectedUserId,
           userName: user?.name || 'অজানা',
           amount: parsedAmount,
-          month,
-          year: parseInt(year),
+          date: fundingDate,
           updatedAt: new Date().toISOString(),
           updatedBy: currentAdmin.displayName || 'অ্যাডমিন'
         });
-        await logAction('funding_update', `${user?.name}-এর ${month} ${year}-এর নতুন তহবিল যোগ করা হয়েছে: ${parsedAmount} টাকা`);
+        await logAction('funding_update', `${user?.name}-এর ${formattedDate}-এর নতুন তহবিল যোগ করা হয়েছে: ${parsedAmount} টাকা`);
       }
       setAmount('');
       alert('তহবিল সফলভাবে আপডেট হয়েছে!');
@@ -143,25 +153,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUserName || !newUserPhone) return;
+    if (!newUserName) return;
 
     setLoading(true);
     try {
       // Create user with phone number instead of email
       await addDoc(collection(db, 'users'), {
         name: newUserName,
-        phone: newUserPhone,
+        phone: newUserPhone || '',
         role: newUserRole,
         neighborhood: newUserNeighborhood || null,
         details: userDetails,
         uid: '' // Will need to be updated when user logs in
       });
-      await logAction('user_add', `নতুন সদস্য যোগ করা হয়েছে: ${newUserName} (${newUserRole}) - পাড়া: ${newUserNeighborhood || 'নির্বাচিত নয়'}`);
+      await logAction('user_add', `নতুন সদস্য যোগ করা হয়েছে: ${newUserName} (${newUserRole}) - পাড়া: ${newUserNeighborhood || 'নির্বাচিত নয়'} - ফোন: ${newUserPhone || 'নেই'}`);
       setNewUserName('');
       setNewUserPhone('');
       setNewUserNeighborhood('');
       setUserDetails('');
-      alert('সদস্য সফলভাবে যোগ করা হয়েছে! ব্যবহারকারী প্রথমবার লগইন করার পর UID আপডেট করতে হবে।');
+      alert('সদস্য সফলভাবে যোগ করা হয়েছে! ব্যবহারকারী প্রথমবার লগইন করার পর UID আপডেট করতে হবে।`);
     } catch (err) {
       console.error(err);
       alert('সদস্য যোগ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
@@ -255,9 +265,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
     }
   };
 
-  // Function to delete funding for a specific month
-  const handleDeleteFunding = async (userId: string, userName: string, month: string, year: string) => {
-    if (!confirm(`আপনি কি নিশ্চিত যে ${userName}-এর ${month} ${year}-এর তহবিল মুছে ফেলতে চান? এই কাজটি ফিরিয়ে আনা যাবে না।`)) {
+  // Function to delete funding for a specific date
+  const handleDeleteFunding = async (userId: string, userName: string, date: string) => {
+    // Format date for display
+    const dateObj = new Date(date);
+    const formattedDate = dateObj.toLocaleDateString('bn-BD', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    
+    if (!confirm(`আপনি কি নিশ্চিত যে ${userName}-এর ${formattedDate}-এর তহবিল মুছে ফেলতে চান? এই কাজটি ফিরিয়ে আনা যাবে না।`)) {
       return;
     }
 
@@ -267,18 +285,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
       const q = query(
         collection(db, 'fundings'),
         where('userId', '==', userId),
-        where('month', '==', month),
-        where('year', '==', parseInt(year))
+        where('date', '==', date)
       );
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
         const fundingDoc = querySnapshot.docs[0];
         await deleteDoc(doc(db, 'fundings', fundingDoc.id));
-        await logAction('funding_delete', `${userName}-এর ${month} ${year}-এর তহবিল মুছে ফেলা হয়েছে`);
-        alert(`${userName}-এর ${month} ${year}-এর তহবিল সফলভাবে মুছে ফেলা হয়েছে!`);
+        await logAction('funding_delete', `${userName}-এর ${formattedDate}-এর তহবিল মুছে ফেলা হয়েছে`);
+        alert(`${userName}-এর ${formattedDate}-এর তহবিল সফলভাবে মুছে ফেলা হয়েছে!`);
       } else {
-        alert('এই মাসের জন্য কোনো তহবিল পাওয়া যায়নি।');
+        alert('এই তারিখের জন্য কোনো তহবিল পাওয়া যায়নি।');
       }
     } catch (err) {
       console.error(err);
@@ -317,17 +334,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
   // Function to update user information
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingUser || !editUserName || !editUserPhone) return;
+    if (!editingUser || !editUserName) return;
 
     setLoading(true);
     try {
       await updateDoc(doc(db, 'users', editingUser.id), {
         name: editUserName,
-        phone: editUserPhone,
+        phone: editUserPhone || '',
         role: editUserRole,
         neighborhood: editUserNeighborhood || null
       });
-      await logAction('user_update', `${editingUser.name}-এর তথ্য আপডেট করা হয়েছে: নতুন নাম ${editUserName}, নতুন ফোন ${editUserPhone}, নতুন রোল ${editUserRole}, নতুন পাড়া ${editUserNeighborhood || 'নির্বাচিত নয়'}`);
+      await logAction('user_update', `${editingUser.name}-এর তথ্য আপডেট করা হয়েছে: নতুন নাম ${editUserName}, নতুন ফোন ${editUserPhone || 'নেই'}, নতুন রোল ${editUserRole}, নতুন পাড়া ${editUserNeighborhood || 'নির্বাচিত নয়'}`);
       alert('সদস্যের তথ্য সফলভাবে আপডেট হয়েছে!');
       cancelEditUser();
     } catch (err) {
@@ -665,28 +682,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">মাস</label>
-                    <select
-                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-sm"
-                      value={month}
-                      onChange={(e) => setMonth(e.target.value)}
-                      required
-                    >
-                      {MONTHS_BN.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">বছর</label>
-                    <input
-                      type="number"
-                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-sm"
-                      value={year}
-                      onChange={(e) => setYear(e.target.value)}
-                      required
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">তারিখ নির্বাচন করুন</label>
+                  <input
+                    type="date"
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-sm"
+                    value={fundingDate}
+                    onChange={(e) => setFundingDate(e.target.value)}
+                    required
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">নির্দিষ্ট তারিখ নির্বাচন করুন (যেমন: ৪ এপ্রিল ২০২৬)</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -789,40 +794,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">মাস</label>
-                    <select
-                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-red-500 font-bold text-sm"
-                      value={month}
-                      onChange={(e) => setMonth(e.target.value)}
-                      required
-                    >
-                      {MONTHS_BN.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">বছর</label>
-                    <input
-                      type="number"
-                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-red-500 font-bold text-sm"
-                      value={year}
-                      onChange={(e) => setYear(e.target.value)}
-                      required
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">তারিখ নির্বাচন করুন</label>
+                  <input
+                    type="date"
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-red-500 font-bold text-sm"
+                    value={fundingDate}
+                    onChange={(e) => setFundingDate(e.target.value)}
+                    required
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">নির্দিষ্ট তারিখ নির্বাচন করুন (যেমন: ৪ এপ্রিল ২০২৬)</p>
                 </div>
 
                 <button
                   onClick={() => {
                     const user = users.find(u => u.id === selectedUserId);
-                    if (user && month && year) {
-                      handleDeleteFunding(selectedUserId, user.name, month, year);
+                    if (user && fundingDate) {
+                      handleDeleteFunding(selectedUserId, user.name, fundingDate);
                     } else {
-                      alert('দয়া করে সদস্য, মাস এবং বছর নির্বাচন করুন।');
+                      alert('দয়া করে সদস্য এবং তারিখ নির্বাচন করুন।');
                     }
                   }}
-                  disabled={loading || !selectedUserId || !month || !year}
+                  disabled={loading || !selectedUserId || !fundingDate}
                   className="w-full bg-red-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-red-100 hover:bg-red-700 transition-all active:scale-[0.98] disabled:opacity-50"
                 >
                   {loading ? 'মুছে ফেলা হচ্ছে...' : 'তহবিল মুছুন'}
@@ -880,7 +873,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                       className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
                       value={editUserPhone}
                       onChange={(e) => setEditUserPhone(e.target.value)}
-                      required
                     />
                   </div>
 
@@ -961,7 +953,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                     className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
                     value={newUserPhone}
                     onChange={(e) => setNewUserPhone(e.target.value)}
-                    required
                   />
                 </div>
 
