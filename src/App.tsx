@@ -191,12 +191,13 @@ const App: React.FC = () => {
             isAdmin={isAdmin} 
             currentView={getCurrentView()}
           >
-            <AdminPanel 
-              users={users} 
-              fundings={fundings} 
-              fundInfo={fundInfo} 
-              currentAdmin={user} 
-            />
+          <AdminPanel 
+            users={users} 
+            fundings={fundings} 
+            fundInfo={fundInfo} 
+            currentAdmin={user}
+            expenses={expenses}
+          />
           </Layout>
         ) : (
           <Layout 

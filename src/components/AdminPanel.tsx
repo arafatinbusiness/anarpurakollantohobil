@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { UserPlus, DollarSign, Settings, Save, X, Plus, Trash2, Users, ChevronRight, Info, History, Clock, Receipt, Calculator } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc, updateDoc, doc, deleteDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
-import { User, Funding, FundInfo, Log } from '../types';
+import { User, Funding, FundInfo, Log, Expense } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { ExpenseForm } from './ExpenseForm';
 import { parseNumericInput, normalizeNumericInput } from '../utils/numericUtils';
@@ -12,6 +12,7 @@ interface AdminPanelProps {
   fundings: Funding[];
   fundInfo: FundInfo | null;
   currentAdmin: any;
+  expenses?: Expense[]; // Add expenses prop for deletion functionality
 }
 
 const MONTHS_BN = [
@@ -27,7 +28,7 @@ const NEIGHBORHOODS = [
   'দক্ষিণ পাড়া'
 ];
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInfo, currentAdmin }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInfo, currentAdmin, expenses = [] }) => {
   const [activeTab, setActiveTab] = useState<'funding' | 'users' | 'info' | 'expenses'>('funding');
   
   // Funding State
@@ -272,6 +273,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
     setEditUserPhone(user.phone || '');
     setEditUserRole(user.role || 'member');
     setEditUserNeighborhood(user.neighborhood || '');
+    
+    // Auto-scroll to the edit form at the top of the page
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }, 100); // Small delay to ensure the edit form is rendered
   };
 
   // Function to cancel editing
@@ -302,6 +311,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
     } catch (err) {
       console.error(err);
       alert('সদস্য আপডেট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to delete an expense
+  const handleDeleteExpense = async (expenseId: string, expenseTitle: string, expenseAmount: number) => {
+    if (!confirm(`আপনি কি নিশ্চিত যে "${expenseTitle}" (${expenseAmount.toLocaleString('bn-BD')} ৳) খরচটি মুছে ফেলতে চান? এই কাজটি ফিরিয়ে আনা যাবে না।`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await deleteDoc(doc(db, 'expenses', expenseId));
+      await logAction('expense_delete', `"${expenseTitle}" (${expenseAmount.toLocaleString('bn-BD')} ৳) খরচটি মুছে ফেলা হয়েছে`);
+      alert(`"${expenseTitle}" খরচটি সফলভাবে মুছে ফেলা হয়েছে!`);
+    } catch (err) {
+      console.error(err);
+      alert('খরচ মুছতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
     } finally {
       setLoading(false);
     }
@@ -358,6 +386,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
             exit={{ opacity: 0, scale: 0.95 }}
             className="space-y-6"
           >
+            {/* Add Expense Form */}
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <div className="w-8 h-8 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center">
@@ -370,6 +399,71 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                   alert('খরচ সফলভাবে যোগ করা হয়েছে!');
                 }}
               />
+            </div>
+
+            {/* Expense List with Delete Buttons */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center">
+                    <Trash2 size={18} />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-800">বর্তমান খরচ তালিকা</h3>
+                </div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">
+                  {expenses.length.toLocaleString('bn-BD')} টি খরচ
+                </span>
+              </div>
+              
+              <p className="text-sm text-slate-600 mb-4">
+                ভুল করে প্রবেশ করা খরচ মুছে ফেলতে নিচের তালিকা ব্যবহার করুন। সতর্কতা: মুছে ফেলা খরচ ফিরিয়ে আনা যাবে না।
+              </p>
+
+              {expenses.length === 0 ? (
+                <div className="py-8 text-center text-slate-400">
+                  <p className="text-sm">কোনো খরচ পাওয়া যায়নি</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {expenses.map(expense => (
+                    <div key={expense.id} className="p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h4 className="font-bold text-slate-900">{expense.title}</h4>
+                          <p className="text-xs text-slate-500 mt-1">{expense.description}</p>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              {expense.date}
+                            </span>
+                            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              {expense.category}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-black text-red-600">
+                            {expense.amount.toLocaleString('bn-BD')} ৳
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-1">
+                            ID: {expense.id.substring(0, 8)}...
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                        <button
+                          onClick={() => handleDeleteExpense(expense.id, expense.title, expense.amount)}
+                          disabled={loading}
+                          className="flex-1 bg-red-600 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1"
+                        >
+                          <Trash2 size={12} />
+                          খরচ মুছুন
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Search, Calendar, User as UserIcon, ChevronRight, X, History, Clock, ChevronLeft, ChevronRight as ChevronRightIcon, Phone, MessageCircle, ArrowLeft } from 'lucide-react';
+import { Download, Search, Calendar, User as UserIcon, ChevronRight, X, History, Clock, ChevronLeft, ChevronRight as ChevronRightIcon, Phone, MessageCircle, ArrowLeft, BarChart3 } from 'lucide-react';
 import { Funding, User, Log, Expense } from '../types';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -496,7 +496,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
               to="/expenses"
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors"
             >
-              <Download size={16} />
+              <BarChart3 size={16} />
               খরচ ড্যাশবোর্ড
             </Link>
             <button
@@ -679,72 +679,80 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
                 </p>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100">
-                      <th className="p-4 text-left text-sm font-bold text-slate-600">সদস্যের নাম</th>
-                      <th className="p-4 text-center text-sm font-bold text-slate-600">মাস</th>
-                      <th className="p-4 text-center text-sm font-bold text-slate-600">পরিমাণ</th>
-                      <th className="p-4 text-center text-sm font-bold text-slate-600">বিস্তারিত</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredMemberData.map((item, index) => (
-                      <tr 
-                        key={item.user.name} 
-                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                          !item.hasContributed ? 'bg-red-50/30' : ''
-                        }`}
-                      >
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-                              item.hasContributed 
-                                ? 'bg-emerald-100 text-emerald-600' 
-                                : 'bg-slate-200 text-slate-500'
-                            }`}>
-                              {item.user.name.charAt(0)}
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900">{item.user.name}</p>
-                              <p className="text-xs text-slate-500">{item.user.role || 'member'}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-center">
-                          <div className="inline-block px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
-                            {item.displayText}
-                          </div>
-                        </td>
-                        <td className="p-4 text-center">
-                          <div className={`inline-block px-3 py-2 rounded-lg font-bold ${
+              <div className="p-4">
+                <div className="space-y-3">
+                  {filteredMemberData.map((item, index) => (
+                    <div 
+                      key={item.user.name} 
+                      className={`p-3 rounded-xl border border-slate-200 hover:border-slate-300 transition-all ${
+                        !item.hasContributed ? 'bg-red-50/30 border-red-100' : 'bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        {/* Left side: Member info */}
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
                             item.hasContributed 
-                              ? 'bg-emerald-50 text-emerald-700' 
-                              : 'bg-slate-100 text-slate-500'
+                              ? 'bg-emerald-100 text-emerald-600' 
+                              : 'bg-slate-200 text-slate-500'
                           }`}>
-                            {item.hasContributed 
-                              ? `${item.contribution.toLocaleString('bn-BD')} ৳`
-                              : '০ ৳'
-                            }
+                            {item.user.name.charAt(0)}
                           </div>
-                        </td>
-                        <td className="p-4 text-center">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-slate-900 truncate">{item.user.name}</p>
+                              {item.user.neighborhood && (
+                                <span className="text-[10px] text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                  {item.user.neighborhood}
+                                </span>
+                              )}
+                            </div>
+                            {!item.user.neighborhood && (
+                              <p className="text-[10px] text-slate-400 mt-0.5">পাড়া নির্বাচিত নয়</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Middle: Month and Amount */}
+                        <div className="flex items-center gap-3 mx-4">
+                          <div className="text-center">
+                            <div className="text-xs text-slate-500 mb-0.5">মাস</div>
+                            <div className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                              {item.displayText}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xs text-slate-500 mb-0.5">পরিমাণ</div>
+                            <div className={`text-sm font-bold px-2 py-1 rounded ${
+                              item.hasContributed 
+                                ? 'bg-emerald-50 text-emerald-700' 
+                                : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {item.hasContributed 
+                                ? `${item.contribution.toLocaleString('bn-BD')} ৳`
+                                : '০ ৳'
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Right side: Details button */}
+                        <div>
                           <button
                             onClick={() => {
                               setSelectedMember(item.user);
                               setViewMode('member');
                             }}
-                            className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
                           >
                             বিস্তারিত
-                            <ChevronRight size={14} />
+                            <ChevronRight size={12} />
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {filteredMemberData.length === 0 && (
@@ -782,10 +790,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
                       <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-lg font-bold">
                         {selectedMember.name.charAt(0)}
                       </div>
-                      <div className="text-right">
-                        <h2 className="text-lg font-bold text-slate-900">{selectedMember.name}</h2>
-                        <p className="text-xs text-slate-600">{selectedMember.role || 'member'}</p>
-                      </div>
+                    <div className="text-right">
+                      <h2 className="text-lg font-bold text-slate-900">{selectedMember.name}</h2>
+                      {selectedMember.neighborhood ? (
+                        <p className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
+                          {selectedMember.neighborhood}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-400">পাড়া নির্বাচিত নয়</p>
+                      )}
+                    </div>
                     </div>
                   </div>
                 </div>
