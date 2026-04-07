@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Download, Search, Calendar, User as UserIcon, ChevronRight, X, History, Clock, ChevronLeft, ChevronRight as ChevronRightIcon, Phone, MessageCircle, ArrowLeft, BarChart3 } from 'lucide-react';
 import { Funding, User, Log, Expense } from '../types';
@@ -206,7 +206,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
   }, [memberData, searchTerm]);
 
   // Helper function to get month from funding (handles both old month/year and new date field)
-  const getFundingMonth = (funding: Funding): string => {
+  const getFundingMonth = useCallback((funding: Funding): string => {
     // If funding has month field (old data), use it
     if (funding.month) {
       return funding.month;
@@ -219,10 +219,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
     }
     // Fallback to current month
     return MONTHS_BN[new Date().getMonth()];
-  };
+  }, []);
 
   // Helper function to get year from funding (handles both old month/year and new date field)
-  const getFundingYear = (funding: Funding): number => {
+  const getFundingYear = useCallback((funding: Funding): number => {
     // If funding has year field (old data), use it
     if (funding.year) {
       return funding.year;
@@ -234,7 +234,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
     }
     // Fallback to current year
     return new Date().getFullYear();
-  };
+  }, []);
 
   // Get selected member's monthly contributions
   const memberMonthlyContributions = useMemo(() => {
