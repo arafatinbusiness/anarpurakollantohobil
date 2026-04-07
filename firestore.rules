@@ -30,6 +30,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Expenses collection
+    match /expenses/{expenseId} {
+      // Everyone can read expenses (for transparency)
+      allow read: if true;
+      // Only admins can write (create, update, delete)
+      allow write: if isAdmin();
+    }
+
     // Logs collection
     match /logs/{logId} {
       // Everyone can read
@@ -48,6 +56,16 @@ service cloud.firestore {
       allow read: if true;
       // Only admins can write
       allow write: if isAdmin();
+    }
+
+    // Pending admins collection (NEW - for admin approval system)
+    match /pending_admins/{pendingId} {
+      // Only admins can read pending requests
+      allow read: if isAdmin();
+      // Anyone authenticated can create a request
+      allow create: if request.auth != null;
+      // Only admins can update (approve/reject) or delete
+      allow update, delete: if isAdmin();
     }
   }
 }

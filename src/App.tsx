@@ -43,12 +43,16 @@ const App: React.FC = () => {
             // User document exists, check admin role
             setIsAdmin(userDoc.data().role === 'admin' || isAdminEmail);
           } else {
-            // User document doesn't exist - check if it's admin email
-            setIsAdmin(isAdminEmail);
+            // User document doesn't exist - check if pending admin request exists
+            const pendingDoc = await getDoc(doc(db, 'pending_admins', firebaseUser.uid));
             
-            // Only auto-create user document for admin email
-            // For regular users, they need to request admin access
-            if (isAdminEmail) {
+            if (pendingDoc.exists()) {
+              // Pending request exists, user is waiting for approval
+              setIsAdmin(false);
+              console.log('User has pending admin request:', firebaseUser.email);
+            } else if (isAdminEmail) {
+              // Main admin email - auto-create admin user
+              setIsAdmin(true);
               try {
                 await setDoc(doc(db, 'users', firebaseUser.uid), {
                   uid: firebaseUser.uid,
@@ -63,8 +67,21 @@ const App: React.FC = () => {
                 console.error('Error auto-creating admin user document:', createErr);
               }
             } else {
-              // Regular user - don't auto-create, they need to request admin access
-              console.log('New user logged in, needs to request admin access:', firebaseUser.email);
+              // Regular user - create pending admin request automatically
+              setIsAdmin(false);
+              try {
+                await setDoc(doc(db, 'pending_admins', firebaseUser.uid), {
+                  uid: firebaseUser.uid,
+                  name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                  email: firebaseUser.email || '',
+                  phone: '', // Can be added later
+                  requestedAt: new Date().toISOString(),
+                  status: 'pending'
+                });
+                console.log('Auto-created pending admin request for:', firebaseUser.email);
+              } catch (createErr) {
+                console.error('Error creating pending admin request:', createErr);
+              }
             }
           }
         } catch (err) {
