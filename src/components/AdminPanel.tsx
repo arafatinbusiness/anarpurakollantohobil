@@ -52,8 +52,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
   const [editUserRole, setEditUserRole] = useState<'admin' | 'member'>('member');
   const [editUserNeighborhood, setEditUserNeighborhood] = useState('');
 
-  // Expense Filter State
-  const [expenseFilter, setExpenseFilter] = useState<'all' | 'last7days'>('last7days');
+  // Expense Pagination State
   const [currentExpensePage, setCurrentExpensePage] = useState(1);
   const expensesPerPage = 10;
 
@@ -505,72 +504,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                 ভুল করে প্রবেশ করা খরচ মুছে ফেলতে নিচের তালিকা ব্যবহার করুন। সতর্কতা: মুছে ফেলা খরচ ফিরিয়ে আনা যাবে না।
               </p>
 
-              {/* Filter Controls */}
+              {/* Pagination Info */}
               <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-xl">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-600">ফিল্টার:</span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => {
-                        setExpenseFilter('last7days');
-                        setCurrentExpensePage(1);
-                      }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                        expenseFilter === 'last7days'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                      }`}
-                    >
-                      শেষ ৭ দিন
-                    </button>
-                    <button
-                      onClick={() => {
-                        setExpenseFilter('all');
-                        setCurrentExpensePage(1);
-                      }}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                        expenseFilter === 'all'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                      }`}
-                    >
-                      সকল খরচ
-                    </button>
-                  </div>
+                  <span className="text-xs font-bold text-slate-600">সকল খরচ তারিখ অনুযায়ী সাজানো</span>
                 </div>
                 <span className="text-xs text-slate-500">
                   পৃষ্ঠা {currentExpensePage}
                 </span>
               </div>
 
-              {/* Filtered Expenses */}
+              {/* All Expenses with Pagination */}
               {(() => {
-                // Filter expenses based on selected filter
-                const filteredExpenses = expenses.filter(expense => {
-                  if (expenseFilter === 'last7days') {
-                    const expenseDate = new Date(expense.date);
-                    const sevenDaysAgo = new Date();
-                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                    return expenseDate >= sevenDaysAgo;
-                  }
-                  return true; // 'all' filter
-                });
-
-                // Calculate pagination
-                const totalPages = Math.ceil(filteredExpenses.length / expensesPerPage);
+                // Calculate pagination for all expenses
+                const totalPages = Math.ceil(expenses.length / expensesPerPage);
                 const startIndex = (currentExpensePage - 1) * expensesPerPage;
                 const endIndex = startIndex + expensesPerPage;
-                const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex);
+                const paginatedExpenses = expenses.slice(startIndex, endIndex);
 
                 return (
                   <>
-                    {filteredExpenses.length === 0 ? (
+                    {expenses.length === 0 ? (
                       <div className="py-8 text-center text-slate-400">
-                        <p className="text-sm">
-                          {expenseFilter === 'last7days' 
-                            ? 'শেষ ৭ দিনে কোনো খরচ পাওয়া যায়নি' 
-                            : 'কোনো খরচ পাওয়া যায়নি'}
-                        </p>
+                        <p className="text-sm">কোনো খরচ পাওয়া যায়নি</p>
                       </div>
                     ) : (
                       <>
@@ -637,7 +593,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                               </button>
                             </div>
                             <p className="text-xs text-slate-500 text-center mt-2">
-                              দেখানো হচ্ছে {startIndex + 1}-{Math.min(endIndex, filteredExpenses.length)} নং খরচ (মোট {filteredExpenses.length} টি)
+                              দেখানো হচ্ছে {startIndex + 1}-{Math.min(endIndex, expenses.length)} নং খরচ (মোট {expenses.length} টি)
                             </p>
                           </div>
                         )}
