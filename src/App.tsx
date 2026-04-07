@@ -43,22 +43,28 @@ const App: React.FC = () => {
             // User document exists, check admin role
             setIsAdmin(userDoc.data().role === 'admin' || isAdminEmail);
           } else {
-            // User document doesn't exist - create it automatically
+            // User document doesn't exist - check if it's admin email
             setIsAdmin(isAdminEmail);
             
-            // Auto-create user document on first login
-            try {
-              await setDoc(doc(db, 'users', firebaseUser.uid), {
-                uid: firebaseUser.uid,
-                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                email: firebaseUser.email || '',
-                role: isAdminEmail ? 'admin' : 'member',
-                details: '',
-                createdAt: new Date().toISOString()
-              });
-              console.log('Auto-created user document for:', firebaseUser.email);
-            } catch (createErr) {
-              console.error('Error auto-creating user document:', createErr);
+            // Only auto-create user document for admin email
+            // For regular users, they need to request admin access
+            if (isAdminEmail) {
+              try {
+                await setDoc(doc(db, 'users', firebaseUser.uid), {
+                  uid: firebaseUser.uid,
+                  name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                  email: firebaseUser.email || '',
+                  role: 'admin',
+                  details: '',
+                  createdAt: new Date().toISOString()
+                });
+                console.log('Auto-created admin user document for:', firebaseUser.email);
+              } catch (createErr) {
+                console.error('Error auto-creating admin user document:', createErr);
+              }
+            } else {
+              // Regular user - don't auto-create, they need to request admin access
+              console.log('New user logged in, needs to request admin access:', firebaseUser.email);
             }
           }
         } catch (err) {

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserPlus, DollarSign, Settings, Save, X, Plus, Trash2, Users, ChevronRight, Info, History, Clock, Receipt, Calculator } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, addDoc, updateDoc, doc, deleteDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
-import { User, Funding, FundInfo, Log, Expense } from '../types';
+import { collection, addDoc, updateDoc, doc, deleteDoc, query, where, getDocs, serverTimestamp, setDoc, onSnapshot } from 'firebase/firestore';
+import { User, Funding, FundInfo, Log, Expense, PendingAdmin } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { ExpenseForm } from './ExpenseForm';
 import { parseNumericInput, normalizeNumericInput } from '../utils/numericUtils';
@@ -60,9 +60,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
   // Member Search State
   const [memberSearch, setMemberSearch] = useState('');
 
+  // Pending Admins State
+  const [pendingAdmins, setPendingAdmins] = useState<PendingAdmin[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+
   // Fund Info State
   const [fundName, setFundName] = useState(fundInfo?.name || '');
   const [fundDesc, setFundDesc] = useState(fundInfo?.description || '');
+
+  // Listen to pending admins
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'pending_admins'), (snapshot) => {
+      const pending = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingAdmin));
+      setPendingAdmins(pending);
+      setLoadingPending(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const logAction = async (type: string, details: string) => {
     await addDoc(collection(db, 'logs'), {
@@ -338,6 +353,69 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
     } catch (err) {
       console.error(err);
       alert('খরচ মুছতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to approve a pending admin request
+  const handleApproveAdmin = async (pendingId: string, uid: string, name: string, email: string, phone?: string) => {
+    if (!confirm(`আপনি কি নিশ্চিত যে ${name} (${email}) কে অ্যাডমিন হিসেবে অনুমোদন করতে চান?`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create user document in users collection
+      await setDoc(doc(db, 'users', uid), {
+        uid: uid,
+        name: name,
+        email: email,
+        phone: phone || '',
+        role: 'admin',
+        details: 'অ্যাডমিন অনুমোদনের মাধ্যমে যোগ করা হয়েছে',
+        createdAt: new Date().toISOString()
+      });
+
+      // Update pending admin status to approved
+      await updateDoc(doc(db, 'pending_admins', pendingId), {
+        status: 'approved',
+        reviewedBy: currentAdmin.displayName || 'অ্যাডমিন',
+        reviewedAt: new Date().toISOString(),
+        notes: 'অ্যাডমিন হিসেবে অনুমোদিত'
+      });
+
+      await logAction('admin_approve', `${name} (${email}) কে অ্যাডমিন হিসেবে অনুমোদন করা হয়েছে`);
+      alert(`${name} কে অ্যাডমিন হিসেবে অনুমোদন করা হয়েছে!`);
+    } catch (err) {
+      console.error(err);
+      alert('অ্যাডমিন অনুমোদন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to reject a pending admin request
+  const handleRejectAdmin = async (pendingId: string, name: string) => {
+    if (!confirm(`আপনি কি নিশ্চিত যে ${name}-এর অ্যাডমিন অনুরোধ প্রত্যাখ্যান করতে চান?`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Update pending admin status to rejected
+      await updateDoc(doc(db, 'pending_admins', pendingId), {
+        status: 'rejected',
+        reviewedBy: currentAdmin.displayName || 'অ্যাডমিন',
+        reviewedAt: new Date().toISOString(),
+        notes: 'অ্যাডমিন অনুরোধ প্রত্যাখ্যান করা হয়েছে'
+      });
+
+      await logAction('admin_reject', `${name}-এর অ্যাডমিন অনুরোধ প্রত্যাখ্যান করা হয়েছে`);
+      alert(`${name}-এর অ্যাডমিন অনুরোধ প্রত্যাখ্যান করা হয়েছে!`);
+    } catch (err) {
+      console.error(err);
+      alert('অ্যাডমিন অনুরোধ প্রত্যাখ্যান করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
     } finally {
       setLoading(false);
     }
@@ -966,6 +1044,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                   {loading ? 'যোগ হচ্ছে...' : 'সদস্য যোগ করুন'}
                 </button>
               </form>
+            </div>
+
+            {/* Pending Admin Approvals Section */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center">
+                    <UserPlus size={18} />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-800">অ্যাডমিন অনুরোধ</h3>
+                </div>
+                <span className="text-[10px] font-bold text-yellow-600 uppercase">
+                  {pendingAdmins.filter(p => p.status === 'pending').length} টি অনুরোধ
+                </span>
+              </div>
+              
+              <p className="text-sm text-slate-600 mb-4">
+                নতুন ব্যবহারকারীরা অ্যাডমিন এক্সেসের জন্য অনুরোধ করেছেন। তাদের অনুমোদন বা প্রত্যাখ্যান করুন।
+              </p>
+              
+              {loadingPending ? (
+                <div className="py-4 text-center text-slate-400">
+                  <p className="text-sm">লোড হচ্ছে...</p>
+                </div>
+              ) : pendingAdmins.filter(p => p.status === 'pending').length === 0 ? (
+                <div className="py-4 text-center text-slate-400">
+                  <p className="text-sm">কোনো নতুন অ্যাডমিন অনুরোধ নেই</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingAdmins
+                    .filter(p => p.status === 'pending')
+                    .map(pending => (
+                      <div key={pending.id} className="bg-white p-4 rounded-xl border border-yellow-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <p className="font-bold text-slate-900">{pending.name}</p>
+                            <p className="text-xs text-slate-500 mt-1">{pending.email}</p>
+                            {pending.phone && (
+                              <p className="text-xs text-slate-500">ফোন: {pending.phone}</p>
+                            )}
+                            <p className="text-[10px] text-slate-400 mt-2">
+                              অনুরোধের তারিখ: {new Date(pending.requestedAt).toLocaleDateString('bn-BD')}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] uppercase font-bold px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg">
+                              অপেক্ষমান
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                          <button
+                            onClick={() => handleApproveAdmin(pending.id, pending.uid, pending.name, pending.email, pending.phone)}
+                            disabled={loading}
+                            className="flex-1 bg-emerald-600 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            অনুমোদন করুন
+                          </button>
+                          <button
+                            onClick={() => handleRejectAdmin(pending.id, pending.name)}
+                            disabled={loading}
+                            className="flex-1 bg-red-600 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            প্রত্যাখ্যান করুন
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">

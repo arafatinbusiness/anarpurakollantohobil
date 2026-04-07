@@ -56,3 +56,16 @@ export interface ExpenseSummary {
   byCategory: Record<string, number>; // Dynamic categories
   monthlyTrend: Array<{ month: string; year: number; total: number }>;
 }
+
+export interface PendingAdmin {
+  id: string;
+  uid: string;
+  name: string;
+  email: string;
+  phone?: string;
+  requestedAt: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: string;
+  reviewedAt?: string;
+  notes?: string;
+}
