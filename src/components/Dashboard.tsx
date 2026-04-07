@@ -185,7 +185,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
         contribution = contributions.reduce((sum, f) => sum + f.amount, 0);
         monthYear = selectedMonth;
         // Show years when this member contributed for this month
-        const years = [...new Set(contributions.map(f => getFundingYear(f).toString()))].sort((a: string, b: string) => b.localeCompare(a));
+        const years = [...new Set(contributions.map(function(f) { return getFundingYear(f).toString(); }))].sort(function(a: string, b: string) { return b.localeCompare(a); });
         displayText = years.length > 0 
           ? `${selectedMonth} (${years.join(', ')})`
           : `${selectedMonth}`;
@@ -203,7 +203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
         contribution = contributions.reduce((sum, f) => sum + f.amount, 0);
         monthYear = 'সকল মাস';
         // Show total years of contribution
-        const years = [...new Set(contributions.map(f => getFundingYear(f).toString()))].sort((a: string, b: string) => b.localeCompare(a));
+        const years = [...new Set(contributions.map(function(f) { return getFundingYear(f).toString(); }))].sort(function(a: string, b: string) { return b.localeCompare(a); });
         displayText = years.length > 0 
           ? `সকল মাস (${years.join(', ')})`
           : 'সকল মাস';
@@ -251,7 +251,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
         month,
         contributions: monthContributions,
         total,
-        years: [...new Set(monthContributions.map(f => getFundingYear(f).toString()))].sort((a: string, b: string) => b.localeCompare(a))
+        years: [...new Set(monthContributions.map(function(f) { return getFundingYear(f).toString(); }))].sort(function(a: string, b: string) { return b.localeCompare(a); })
       };
     });
     
