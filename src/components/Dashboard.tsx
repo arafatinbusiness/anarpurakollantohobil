@@ -660,38 +660,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            {/* Main Table */}
+            {/* Main Table - Simplified Layout */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
               <div className="p-4 border-b border-slate-100">
-                <h2 className="text-lg font-bold text-slate-800">
-                  সদস্য তালিকা ({users.length} জন)
-                </h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  {selectedMonth || selectedYear 
-                    ? `নির্বাচিত মাসের জন্য সকল সদস্য`
-                    : 'সকল মাসের জন্য সকল সদস্য'
-                  }
-                  {searchTerm && (
-                    <span className="text-emerald-600 font-medium">
-                      (ফিল্টার করা: {filteredMemberData.length} জন)
-                    </span>
-                  )}
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800">
+                      সদস্য তালিকা ({users.length} জন)
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {selectedMonth || selectedYear 
+                        ? `নির্বাচিত মাসের জন্য সকল সদস্য`
+                        : 'সকল মাসের জন্য সকল সদস্য'
+                      }
+                      {searchTerm && (
+                        <span className="text-emerald-600 font-medium">
+                          (ফিল্টার করা: {filteredMemberData.length} জন)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {filteredMemberData.filter(m => m.hasContributed).length} জন জমা দিয়েছেন
+                  </div>
+                </div>
               </div>
 
-              <div className="p-4">
-                <div className="space-y-3">
+              <div className="p-3">
+                <div className="space-y-2">
                   {filteredMemberData.map((item, index) => (
                     <div 
                       key={item.user.name} 
-                      className={`p-3 rounded-xl border border-slate-200 hover:border-slate-300 transition-all ${
-                        !item.hasContributed ? 'bg-red-50/30 border-red-100' : 'bg-white'
+                      className={`p-3 rounded-xl border transition-all hover:shadow-sm ${
+                        !item.hasContributed ? 'bg-red-50/30 border-red-100' : 'bg-white border-slate-200'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        {/* Left side: Member info */}
+                      {/* Single Row Layout - Much Simpler */}
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Member Avatar and Name */}
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm ${
                             item.hasContributed 
                               ? 'bg-emerald-100 text-emerald-600' 
                               : 'bg-slate-200 text-slate-500'
@@ -699,56 +707,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
                             {item.user.name.charAt(0)}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-slate-900 truncate">{item.user.name}</p>
-                              {item.user.neighborhood && (
-                                <span className="text-[10px] text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                                  {item.user.neighborhood}
-                                </span>
-                              )}
-                            </div>
-                            {!item.user.neighborhood && (
-                              <p className="text-[10px] text-slate-400 mt-0.5">পাড়া নির্বাচিত নয়</p>
+                            <p className="text-sm font-bold text-slate-900 truncate">{item.user.name}</p>
+                            {item.user.neighborhood && (
+                              <p className="text-xs text-emerald-600 font-medium truncate">
+                                {item.user.neighborhood}
+                              </p>
                             )}
                           </div>
                         </div>
                         
-                        {/* Middle: Month and Amount */}
-                        <div className="flex items-center gap-3 mx-4">
-                          <div className="text-center">
-                            <div className="text-xs text-slate-500 mb-0.5">মাস</div>
-                            <div className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                              {item.displayText}
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xs text-slate-500 mb-0.5">পরিমাণ</div>
-                            <div className={`text-sm font-bold px-2 py-1 rounded ${
-                              item.hasContributed 
-                                ? 'bg-emerald-50 text-emerald-700' 
-                                : 'bg-slate-100 text-slate-500'
-                            }`}>
-                              {item.hasContributed 
-                                ? `${item.contribution.toLocaleString('bn-BD')} ৳`
-                                : '০ ৳'
-                              }
-                            </div>
-                          </div>
+                        {/* Contribution Amount - Simple Display */}
+                        <div className={`text-sm font-bold px-3 py-1.5 rounded-lg min-w-[80px] text-center ${
+                          item.hasContributed 
+                            ? 'bg-emerald-50 text-emerald-700' 
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {item.hasContributed 
+                            ? `${item.contribution.toLocaleString('bn-BD')} ৳`
+                            : '০ ৳'
+                          }
                         </div>
-                        
-                        {/* Right side: Details button */}
-                        <div>
-                          <button
-                            onClick={() => {
-                              setSelectedMember(item.user);
-                              setViewMode('member');
-                            }}
-                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-                          >
-                            বিস্তারিত
-                            <ChevronRight size={12} />
-                          </button>
+                      </div>
+                      
+                      {/* Month Info and Details Button - Compact */}
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                        <div className="text-xs text-slate-600">
+                          <span className="font-medium">মাস:</span> {item.displayText}
                         </div>
+                        <button
+                          onClick={() => {
+                            setSelectedMember(item.user);
+                            setViewMode('member');
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-700 font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg transition-colors"
+                        >
+                          বিস্তারিত
+                        </button>
                       </div>
                     </div>
                   ))}
