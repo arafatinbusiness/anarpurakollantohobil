@@ -171,7 +171,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
       setNewUserPhone('');
       setNewUserNeighborhood('');
       setUserDetails('');
-      alert('সদস্য সফলভাবে যোগ করা হয়েছে! ব্যবহারকারী প্রথমবার লগইন করার পর UID আপডেট করতে হবে।`);
+      alert('সদস্য সফলভাবে যোগ করা হয়েছে! ব্যবহারকারী প্রথমবার লগইন করার পর UID আপডেট করতে হবে।');
     } catch (err) {
       console.error(err);
       alert('সদস্য যোগ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
