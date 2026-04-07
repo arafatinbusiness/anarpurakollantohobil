@@ -52,6 +52,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
   const [editUserRole, setEditUserRole] = useState<'admin' | 'member'>('member');
   const [editUserNeighborhood, setEditUserNeighborhood] = useState('');
 
+  // Expense Filter State
+  const [expenseFilter, setExpenseFilter] = useState<'all' | 'last7days'>('last7days');
+  const [currentExpensePage, setCurrentExpensePage] = useState(1);
+  const expensesPerPage = 10;
+
+  // Member Search State
+  const [memberSearch, setMemberSearch] = useState('');
+
   // Fund Info State
   const [fundName, setFundName] = useState(fundInfo?.name || '');
   const [fundDesc, setFundDesc] = useState(fundInfo?.description || '');
@@ -419,51 +427,147 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                 ভুল করে প্রবেশ করা খরচ মুছে ফেলতে নিচের তালিকা ব্যবহার করুন। সতর্কতা: মুছে ফেলা খরচ ফিরিয়ে আনা যাবে না।
               </p>
 
-              {expenses.length === 0 ? (
-                <div className="py-8 text-center text-slate-400">
-                  <p className="text-sm">কোনো খরচ পাওয়া যায়নি</p>
+              {/* Filter Controls */}
+              <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-600">ফিল্টার:</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => {
+                        setExpenseFilter('last7days');
+                        setCurrentExpensePage(1);
+                      }}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                        expenseFilter === 'last7days'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                      }`}
+                    >
+                      শেষ ৭ দিন
+                    </button>
+                    <button
+                      onClick={() => {
+                        setExpenseFilter('all');
+                        setCurrentExpensePage(1);
+                      }}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                        expenseFilter === 'all'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                      }`}
+                    >
+                      সকল খরচ
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {expenses.map(expense => (
-                    <div key={expense.id} className="p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <h4 className="font-bold text-slate-900">{expense.title}</h4>
-                          <p className="text-xs text-slate-500 mt-1">{expense.description}</p>
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                              {expense.date}
-                            </span>
-                            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                              {expense.category}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-black text-red-600">
-                            {expense.amount.toLocaleString('bn-BD')} ৳
-                          </div>
-                          <div className="text-[10px] text-slate-400 mt-1">
-                            ID: {expense.id.substring(0, 8)}...
-                          </div>
-                        </div>
+                <span className="text-xs text-slate-500">
+                  পৃষ্ঠা {currentExpensePage}
+                </span>
+              </div>
+
+              {/* Filtered Expenses */}
+              {(() => {
+                // Filter expenses based on selected filter
+                const filteredExpenses = expenses.filter(expense => {
+                  if (expenseFilter === 'last7days') {
+                    const expenseDate = new Date(expense.date);
+                    const sevenDaysAgo = new Date();
+                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                    return expenseDate >= sevenDaysAgo;
+                  }
+                  return true; // 'all' filter
+                });
+
+                // Calculate pagination
+                const totalPages = Math.ceil(filteredExpenses.length / expensesPerPage);
+                const startIndex = (currentExpensePage - 1) * expensesPerPage;
+                const endIndex = startIndex + expensesPerPage;
+                const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex);
+
+                return (
+                  <>
+                    {filteredExpenses.length === 0 ? (
+                      <div className="py-8 text-center text-slate-400">
+                        <p className="text-sm">
+                          {expenseFilter === 'last7days' 
+                            ? 'শেষ ৭ দিনে কোনো খরচ পাওয়া যায়নি' 
+                            : 'কোনো খরচ পাওয়া যায়নি'}
+                        </p>
                       </div>
-                      
-                      <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                        <button
-                          onClick={() => handleDeleteExpense(expense.id, expense.title, expense.amount)}
-                          disabled={loading}
-                          className="flex-1 bg-red-600 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1"
-                        >
-                          <Trash2 size={12} />
-                          খরচ মুছুন
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ) : (
+                      <>
+                        <div className="space-y-3">
+                          {paginatedExpenses.map(expense => (
+                            <div key={expense.id} className="p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                              <div className="flex items-center justify-between mb-2">
+                                <div>
+                                  <h4 className="font-bold text-slate-900">{expense.title}</h4>
+                                  <p className="text-xs text-slate-500 mt-1">{expense.description}</p>
+                                  <div className="flex items-center gap-3 mt-2">
+                                    <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                                      {expense.date}
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                                      {expense.category}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-lg font-black text-red-600">
+                                    {expense.amount.toLocaleString('bn-BD')} ৳
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 mt-1">
+                                    ID: {expense.id.substring(0, 8)}...
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                                <button
+                                  onClick={() => handleDeleteExpense(expense.id, expense.title, expense.amount)}
+                                  disabled={loading}
+                                  className="flex-1 bg-red-600 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1"
+                                >
+                                  <Trash2 size={12} />
+                                  খরচ মুছুন
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                          <div className="mt-6 pt-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between">
+                              <button
+                                onClick={() => setCurrentExpensePage(prev => Math.max(1, prev - 1))}
+                                disabled={currentExpensePage === 1}
+                                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors disabled:opacity-50"
+                              >
+                                পূর্ববর্তী
+                              </button>
+                              <span className="text-xs text-slate-600">
+                                পৃষ্ঠা {currentExpensePage} / {totalPages}
+                              </span>
+                              <button
+                                onClick={() => setCurrentExpensePage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentExpensePage === totalPages}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                              >
+                                পরবর্তী
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-500 text-center mt-2">
+                              দেখানো হচ্ছে {startIndex + 1}-{Math.min(endIndex, filteredExpenses.length)} নং খরচ (মোট {filteredExpenses.length} টি)
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </motion.div>
         )}
@@ -487,6 +591,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">সদস্য নির্বাচন করুন</label>
+                  
+                  {/* Member Search Input */}
+                  <div className="relative mb-2">
+                    <input
+                      type="text"
+                      placeholder="সদস্যের নাম বা পাড়া খুঁজুন..."
+                      className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                      {users.length} জন
+                    </span>
+                  </div>
+                  
+                  {/* Filtered Member Dropdown */}
                   <select
                     className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-sm"
                     value={selectedUserId}
@@ -494,8 +614,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                     required
                   >
                     <option value="">সদস্য বেছে নিন</option>
-                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    {users
+                      .filter(u => 
+                        !memberSearch || 
+                        u.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+                        (u.neighborhood && u.neighborhood.toLowerCase().includes(memberSearch.toLowerCase()))
+                      )
+                      .map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} {u.neighborhood ? `(${u.neighborhood})` : ''}
+                        </option>
+                      ))}
                   </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    নামের সাথে পাড়া দেখানো হচ্ছে। সার্চ বক্সে নাম বা পাড়া লিখুন।
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -582,6 +715,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">সদস্য নির্বাচন করুন</label>
+                  
+                  {/* Member Search Input */}
+                  <div className="relative mb-2">
+                    <input
+                      type="text"
+                      placeholder="সদস্যের নাম বা পাড়া খুঁজুন..."
+                      className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                      {users.length} জন
+                    </span>
+                  </div>
+                  
+                  {/* Filtered Member Dropdown */}
                   <select
                     className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-red-500 font-bold text-sm"
                     value={selectedUserId}
@@ -589,8 +738,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ users, fundings, fundInf
                     required
                   >
                     <option value="">সদস্য বেছে নিন</option>
-                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    {users
+                      .filter(u => 
+                        !memberSearch || 
+                        u.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+                        (u.neighborhood && u.neighborhood.toLowerCase().includes(memberSearch.toLowerCase()))
+                      )
+                      .map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} {u.neighborhood ? `(${u.neighborhood})` : ''}
+                        </option>
+                      ))}
                   </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    নামের সাথে পাড়া দেখানো হচ্ছে। সার্চ বক্সে নাম বা পাড়া লিখুন।
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
