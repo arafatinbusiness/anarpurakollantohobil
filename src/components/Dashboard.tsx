@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Download, Search, Calendar, User as UserIcon, ChevronRight, X, History, Clock, ChevronLeft, ChevronRight as ChevronRightIcon, Phone, MessageCircle, ArrowLeft, BarChart3 } from 'lucide-react';
 import { Funding, User, Log, Expense } from '../types';
@@ -28,42 +28,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [viewMode, setViewMode] = useState<'main' | 'member' | 'history'>('main');
 
-  // Helper function to get month from funding (handles both old month/year and new date field)
-  const getFundingMonth = useCallback((funding: Funding): string => {
-    // If funding has month field (old data), use it
-    if (funding.month) {
-      return funding.month;
-    }
-    // If funding has date field (new data), extract month from date
-    if (funding.date) {
-      const dateObj = new Date(funding.date);
-      const monthIndex = dateObj.getMonth();
-      return MONTHS_BN[monthIndex];
-    }
-    // Fallback to current month
-    return MONTHS_BN[new Date().getMonth()];
-  }, []);
-
-  // Helper function to get year from funding (handles both old month/year and new date field)
-  const getFundingYear = useCallback((funding: Funding): number => {
-    // If funding has year field (old data), use it
-    if (funding.year) {
-      return funding.year;
-    }
-    // If funding has date field (new data), extract year from date
-    if (funding.date) {
-      const dateObj = new Date(funding.date);
-      return dateObj.getFullYear();
-    }
-    // Fallback to current year
-    return new Date().getFullYear();
-  }, []);
-
   // Get available years
   const years = useMemo(() => {
-    const yrs = new Set(fundings.map(f => getFundingYear(f).toString()));
+    const yrs = new Set(fundings.map(f => f.year.toString()));
     return Array.from(yrs).sort((a: string, b: string) => b.localeCompare(a));
-  }, [fundings, getFundingYear]);
+  }, [fundings]);
 
   // State for logs and pagination
   const [logs, setLogs] = useState<Log[]>([]);
@@ -149,11 +118,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
   // Filter fundings based on selected month/year
   const filteredFundings = useMemo(() => {
     return fundings.filter(f => {
-      const matchesMonth = selectedMonth ? getFundingMonth(f) === selectedMonth : true;
-      const matchesYear = selectedYear ? getFundingYear(f).toString() === selectedYear : true;
+      const matchesMonth = selectedMonth ? f.month === selectedMonth : true;
+      const matchesYear = selectedYear ? f.year.toString() === selectedYear : true;
       return matchesMonth && matchesYear;
     });
-  }, [fundings, selectedMonth, selectedYear, getFundingMonth, getFundingYear]);
+  }, [fundings, selectedMonth, selectedYear]);
 
   // Calculate total contributions and expenses
   const totalContributions = useMemo(() => fundings.reduce((sum, f) => sum + f.amount, 0), [fundings]);
@@ -171,8 +140,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
         // Find contribution for specific month/year
         const funding = fundings.find(f => 
           f.userName === user.name && 
-          getFundingMonth(f) === selectedMonth && 
-          getFundingYear(f).toString() === selectedYear
+          f.month === selectedMonth && 
+          f.year.toString() === selectedYear
         );
         contribution = funding?.amount || 0;
         monthYear = `${selectedMonth} ${selectedYear}`;
@@ -180,19 +149,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
       } else if (selectedMonth) {
         // Find total for selected month across all years
         const contributions = fundings.filter(f => 
-          f.userName === user.name && getFundingMonth(f) === selectedMonth
+          f.userName === user.name && f.month === selectedMonth
         );
         contribution = contributions.reduce((sum, f) => sum + f.amount, 0);
         monthYear = selectedMonth;
         // Show years when this member contributed for this month
-        const years = [...new Set(contributions.map(function(f) { return getFundingYear(f).toString(); }))].sort(function(a: string, b: string) { return b.localeCompare(a); });
+        const years = [...new Set(contributions.map(f => f.year.toString()))].sort((a: string, b: string) => b.localeCompare(a));
         displayText = years.length > 0 
           ? `${selectedMonth} (${years.join(', ')})`
           : `${selectedMonth}`;
       } else if (selectedYear) {
         // Find total for selected year across all months
         const contributions = fundings.filter(f => 
-          f.userName === user.name && getFundingYear(f).toString() === selectedYear
+          f.userName === user.name && f.year.toString() === selectedYear
         );
         contribution = contributions.reduce((sum, f) => sum + f.amount, 0);
         monthYear = selectedYear;
@@ -203,7 +172,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
         contribution = contributions.reduce((sum, f) => sum + f.amount, 0);
         monthYear = 'সকল মাস';
         // Show total years of contribution
-        const years = [...new Set(contributions.map(function(f) { return getFundingYear(f).toString(); }))].sort(function(a: string, b: string) { return b.localeCompare(a); });
+        const years = [...new Set(contributions.map(f => f.year.toString()))].sort((a: string, b: string) => b.localeCompare(a));
         displayText = years.length > 0 
           ? `সকল মাস (${years.join(', ')})`
           : 'সকল মাস';
@@ -227,7 +196,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
       if (!b.hasContributed) return 1;
       return a.contribution - b.contribution;
     });
-  }, [users, fundings, selectedMonth, selectedYear, getFundingMonth, getFundingYear]);
+  }, [users, fundings, selectedMonth, selectedYear]);
 
   // Filter member data based on search term
   const filteredMemberData = useMemo(() => {
@@ -244,19 +213,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
     
     // Create array for all months
     const monthlyData = MONTHS_BN.map(month => {
-      const monthContributions = contributions.filter(f => getFundingMonth(f) === month);
+      const monthContributions = contributions.filter(f => f.month === month);
       const total = monthContributions.reduce((sum, f) => sum + f.amount, 0);
       
       return {
         month,
         contributions: monthContributions,
         total,
-        years: [...new Set(monthContributions.map(function(f) { return getFundingYear(f).toString(); }))].sort(function(a: string, b: string) { return b.localeCompare(a); })
+        years: [...new Set(monthContributions.map(f => f.year.toString()))].sort((a: string, b: string) => b.localeCompare(a))
       };
     });
     
     return monthlyData;
-  }, [selectedMember, fundings, getFundingMonth, getFundingYear]);
+  }, [selectedMember, fundings]);
 
   // Export to Excel with professional styling (member rows with month columns)
   const exportToExcel = () => {
@@ -283,8 +252,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
       MONTHS_BN.forEach(month => {
         const funding = fundings.find(f => 
           f.userName === user.name && 
-          getFundingMonth(f) === month && 
-          getFundingYear(f).toString() === targetYear
+          f.month === month && 
+          f.year.toString() === targetYear
         );
         const amount = funding?.amount || 0;
         row.push(amount);
@@ -306,7 +275,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
     // Month totals
     MONTHS_BN.forEach(month => {
       const monthTotal = fundings
-        .filter(f => getFundingMonth(f) === month && getFundingYear(f).toString() === targetYear)
+        .filter(f => f.month === month && f.year.toString() === targetYear)
         .reduce((sum, f) => sum + f.amount, 0);
       summaryRow.push(monthTotal);
       grandTotal += monthTotal;
@@ -908,7 +877,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
                               <p>
                                 {funding.year} সালে: {funding.amount.toLocaleString('bn-BD')} ৳
                                 <span className="text-xs text-slate-500 ml-2">
-                                  ({format(new Date(funding.updatedAt), 'dd MMM yyyy', { locale: bn })})
+                                  (তারিখ: {funding.date || format(new Date(funding.updatedAt), 'dd', { locale: bn })})
                                 </span>
                               </p>
                             </div>

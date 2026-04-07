@@ -110,9 +110,7 @@ const App: React.FC = () => {
     });
 
     // Listen to Fundings (public data)
-    // Note: We can't use orderBy on fields that might not exist in all documents
-    // Some documents have date field instead of month/year fields
-    const unsubFundings = onSnapshot(collection(db, 'fundings'), (snapshot) => {
+    const unsubFundings = onSnapshot(query(collection(db, 'fundings'), orderBy('year', 'desc'), orderBy('month', 'desc')), (snapshot) => {
       setFundings(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Funding)));
     });
 
