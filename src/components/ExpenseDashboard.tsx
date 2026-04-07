@@ -130,11 +130,17 @@ export const ExpenseDashboard: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString || dateString.trim() === '') {
+    // Handle non-string or empty values
+    if (!dateString || typeof dateString !== 'string') {
       return 'তারিখ নেই';
     }
     
-    const date = new Date(dateString);
+    const trimmed = dateString.trim();
+    if (trimmed === '') {
+      return 'তারিখ নেই';
+    }
+    
+    const date = new Date(trimmed);
     
     // Check if date is valid
     if (isNaN(date.getTime())) {
