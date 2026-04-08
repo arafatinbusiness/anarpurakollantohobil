@@ -42,6 +42,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
   const [currentPage, setCurrentPage] = useState(1);
   const logsPerPage = 10;
 
+  // State for member list pagination
+  const [memberCurrentPage, setMemberCurrentPage] = useState(1);
+  const membersPerPage = 25;
+
   // Fetch logs from Firebase
   const fetchLogs = async (isInitial = true) => {
     setLoadingLogs(true);
@@ -204,6 +208,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
       item.user.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [memberData, searchTerm]);
+
+  // Calculate paginated member data
+  const paginatedMemberData = useMemo(() => {
+    const startIndex = (memberCurrentPage - 1) * membersPerPage;
+    const endIndex = startIndex + membersPerPage;
+    return filteredMemberData.slice(startIndex, endIndex);
+  }, [filteredMemberData, memberCurrentPage]);
+
+  // Calculate total pages for member list
+  const totalMemberPages = useMemo(() => {
+    return Math.ceil(filteredMemberData.length / membersPerPage);
+  }, [filteredMemberData]);
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setMemberCurrentPage(1);
+  }, [searchTerm, selectedMonth, selectedYear]);
 
   // Get selected member's monthly contributions
   const memberMonthlyContributions = useMemo(() => {
@@ -688,7 +709,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
 
               <div className="p-3">
                 <div className="space-y-2">
-                  {filteredMemberData.map((item, index) => (
+                  {paginatedMemberData.map((item, index) => (
                     <div 
                       key={item.user.name} 
                       className={`p-3 rounded-xl border transition-all hover:shadow-sm ${
@@ -747,6 +768,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ fundings, users, fundName,
                     </div>
                   ))}
                 </div>
+
+                {/* Member List Pagination */}
+                {totalMemberPages > 1 && (
+                  <div className="mt-6 pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => setMemberCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={memberCurrentPage === 1}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-50"
+                      >
+                        <ChevronLeft size={16} />
+                        পূর্ববর্তী
+                      </button>
+                      <span className="text-sm text-slate-600">
+                        পৃষ্ঠা {memberCurrentPage} / {totalMemberPages}
+                      </span>
+                      <button
+                        onClick={() => setMemberCurrentPage(prev => Math.min(totalMemberPages, prev + 1))}
+                        disabled={memberCurrentPage === totalMemberPages}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                      >
+                        পরবর্তী
+                        <ChevronRightIcon size={16} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 text-center mt-2">
+                      দেখানো হচ্ছে {((memberCurrentPage - 1) * membersPerPage) + 1}-{Math.min(memberCurrentPage * membersPerPage, filteredMemberData.length)} নং সদস্য (মোট {filteredMemberData.length} জন)
+                    </p>
+                  </div>
+                )}
               </div>
 
               {filteredMemberData.length === 0 && (
